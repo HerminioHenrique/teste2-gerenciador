@@ -264,7 +264,7 @@ export default function ManagerDashboard({ manager, onSelectClient }: ManagerDas
             <thead>
               <tr className="bg-gray-50 text-gray-500 text-xs uppercase tracking-wider">
                 <th className="px-6 py-4 font-semibold">Cliente</th>
-                <th className="px-6 py-4 font-semibold">Total Tokens</th>
+                <th className="px-6 py-4 font-semibold">Próximo Rendimento</th>
                 <th className="px-6 py-4 font-semibold">Saldo Atual</th>
                 <th className="px-6 py-4 font-semibold">Taxa</th>
                 <th className="px-6 py-4 font-semibold">Próx. Pagamento</th>
@@ -286,8 +286,8 @@ export default function ManagerDashboard({ manager, onSelectClient }: ManagerDas
                         <span className="text-xs text-gray-500">{client.email}</span>
                       </div>
                     </td>
-                    <td className="px-6 py-4 text-sm text-gray-600">
-                      {stats.totalInvested.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                    <td className="px-6 py-4 text-sm font-semibold text-purple-600">
+                      {stats.periodProfit.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                     </td>
                     <td className="px-6 py-4 text-sm font-semibold text-emerald-600">
                       {stats.currentBalance.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
