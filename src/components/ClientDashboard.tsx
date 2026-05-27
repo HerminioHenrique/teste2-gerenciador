@@ -8,7 +8,7 @@ import {
 } from 'firebase/firestore';
 import { db } from '../firebase';
 import { UserProfile, Deposit, Payment } from '../types';
-import { getClientStats, calculateCompoundInterest } from '../utils/calculations';
+import { getClientStats } from '../utils/calculations';
 import { 
   TrendingUp, 
   DollarSign, 
@@ -77,27 +77,20 @@ export default function ClientDashboard({ client }: ClientDashboardProps) {
   const chartData = Array.from({ length: 13 }).map((_, i) => {
     const monthOffset = i - 6;
     const targetDate = addMonths(new Date(), monthOffset);
-    
-    // Calculate balance at targetDate
-    let balanceAtDate = 0;
-    deposits.forEach(d => {
-      const dDate = new Date(d.date);
-      if (dDate <= targetDate) {
-        balanceAtDate += calculateCompoundInterest(
-          d.amount, 
-          currentRate, 
-          dDate, 
-          client.paymentFrequency || 'monthly', 
-          targetDate
-        );
-      }
-    });
-    
+
+    let balanceAtDate = deposits
+      .filter((deposit) => new Date(deposit.date) <= targetDate)
+      .reduce((sum, deposit) => sum + deposit.amount, 0);
+
     const paidUntilDate = payments
-      .filter(p => new Date(p.date) <= targetDate)
-      .reduce((sum, p) => sum + p.amount, 0);
-      
+      .filter((payment) => payment.type !== 'reinvestment' && new Date(payment.date) <= targetDate)
+      .reduce((sum, payment) => sum + payment.amount, 0);
+
     balanceAtDate -= paidUntilDate;
+
+    if (monthOffset > 0) {
+      balanceAtDate = stats.currentBalance * Math.pow(1 + currentRate / 100, monthOffset);
+    }
 
     return {
       name: targetDate.toLocaleDateString('pt-BR', { month: 'short' }),
@@ -156,7 +149,7 @@ export default function ClientDashboard({ client }: ClientDashboardProps) {
           </h3>
           <div className="mt-4 flex items-center gap-1 text-xs text-gray-400">
             <Info className="w-3 h-3" />
-            <span>Inclui juros compostos acumulados</span>
+            <span>Mostra os tokens ativos j&aacute; creditados</span>
           </div>
         </motion.div>
 

@@ -89,23 +89,15 @@ export function getClientStats(
     (payment) => payment.type !== 'reinvestment' || hasMatchingReinvestmentDeposit(payment)
   );
 
-  let totalInvested = 0;
-  let currentBalance = 0;
+  const totalInvested = effectiveDeposits.reduce((sum, deposit) => sum + deposit.amount, 0);
 
-  // Calculate balance from deposits
-  effectiveDeposits.forEach((d) => {
-    const depositDate = new Date(d.date);
-    totalInvested += d.amount;
-    // For current balance, we use compound interest based on full periods passed
-    // We ALWAYS use the client's original frequency and rate for the capital balance
-    currentBalance += calculateCompoundInterest(d.amount, rate, depositDate, frequency, now);
-  });
-
-  // Subtract payments (only withdrawals, reinvestments don't reduce balance)
   const totalEffectivePaid = effectivePayments
     .filter(p => p.type !== 'reinvestment')
     .reduce((sum, p) => sum + p.amount, 0);
-  currentBalance -= totalEffectivePaid;
+
+  // Current balance follows the business rule used in reapplies:
+  // sum of all active tokens already credited minus actual withdrawals.
+  const currentBalance = totalInvested - totalEffectivePaid;
 
   // Period profit projection (Next period's yield)
   const periodProfit = currentBalance * (profitRate / 100);
