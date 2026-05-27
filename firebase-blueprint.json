@@ -1,0 +1,65 @@
+{
+  "entities": {
+    "User": {
+      "title": "User Profile",
+      "description": "Stores user information and roles.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "email": { "type": "string" },
+        "name": { "type": "string" },
+        "role": { "type": "string", "enum": ["manager", "client", "payer"] },
+        "interestRate": { "type": "number", "description": "Monthly interest rate in % (only for clients)" },
+        "paymentDay": { "type": "integer", "description": "Day of the month for payment (only for clients)" },
+        "paymentFrequency": { "type": "string", "enum": ["weekly", "biweekly", "monthly"] },
+        "managerId": { "type": "string", "description": "UID of the manager who created this client" },
+        "payerEmail": { "type": "string", "description": "Email of the payer linked to this manager" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid", "email", "role"]
+    },
+    "Deposit": {
+      "title": "Deposit",
+      "description": "Investment deposit made by a client.",
+      "type": "object",
+      "properties": {
+        "clientId": { "type": "string" },
+        "clientEmail": { "type": "string" },
+        "amount": { "type": "number" },
+        "date": { "type": "string", "format": "date-time" },
+        "managerId": { "type": "string" },
+        "payerEmail": { "type": "string" }
+      },
+      "required": ["clientId", "clientEmail", "amount", "date"]
+    },
+    "Payment": {
+      "title": "Payment",
+      "description": "Payment made to a client.",
+      "type": "object",
+      "properties": {
+        "clientId": { "type": "string" },
+        "clientEmail": { "type": "string" },
+        "amount": { "type": "number" },
+        "date": { "type": "string", "format": "date-time" },
+        "managerId": { "type": "string" },
+        "payerEmail": { "type": "string" },
+        "type": { "type": "string", "enum": ["withdrawal", "reinvestment"] }
+      },
+      "required": ["clientId", "clientEmail", "amount", "date"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "User",
+      "description": "User profiles"
+    },
+    "/deposits/{depositId}": {
+      "schema": "Deposit",
+      "description": "Client deposits"
+    },
+    "/payments/{paymentId}": {
+      "schema": "Payment",
+      "description": "Client payments"
+    }
+  }
+}
