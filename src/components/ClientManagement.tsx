@@ -432,10 +432,11 @@ export default function ClientManagement({ manager, clientId, onBack }: ClientMa
 
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
         <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
-          <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">Total de Tokens</p>
+          <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">Próximo Rendimento</p>
           <h3 className="text-xl font-bold text-gray-900">
-            {stats.totalInvested.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+            {stats.periodProfit.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
           </h3>
+          <p className="text-[10px] text-gray-400 mt-1">Estimativa para a próxima competência</p>
         </div>
         <div className="bg-emerald-50 p-6 rounded-2xl shadow-sm border border-emerald-100">
           <p className="text-xs font-bold text-emerald-600 uppercase tracking-wider mb-1">Saldo Atual</p>
