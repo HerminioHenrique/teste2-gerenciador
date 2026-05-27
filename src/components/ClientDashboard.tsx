@@ -1,25 +1,23 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  collection, 
-  query, 
-  where, 
-  onSnapshot, 
-  orderBy
+import {
+  collection,
+  query,
+  where,
+  onSnapshot,
 } from 'firebase/firestore';
 import { db } from '../firebase';
 import { UserProfile, Deposit, Payment } from '../types';
 import { getClientStats } from '../utils/calculations';
-import { 
-  TrendingUp, 
-  DollarSign, 
-  Calendar, 
-  History, 
-  ArrowUpRight, 
+import {
+  TrendingUp,
+  DollarSign,
+  History,
+  ArrowUpRight,
   ArrowDownRight,
   Clock,
   Info,
   AlertCircle,
-  CheckCircle2
+  CheckCircle2,
 } from 'lucide-react';
 import { motion } from 'motion/react';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine } from 'recharts';
@@ -39,22 +37,22 @@ export default function ClientDashboard({ client }: ClientDashboardProps) {
     if (!client.email) return;
 
     const qDeposits = query(
-      collection(db, 'deposits'), 
+      collection(db, 'deposits'),
       where('clientEmail', '==', client.email)
     );
     const unsubDeposits = onSnapshot(qDeposits, (snapshot) => {
-      const docs = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as Deposit));
+      const docs = snapshot.docs.map((doc) => ({ ...doc.data(), id: doc.id } as Deposit));
       setDeposits(docs.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()));
     }, (error) => {
       handleFirestoreError(error, OperationType.GET, 'deposits');
     });
 
     const qPayments = query(
-      collection(db, 'payments'), 
+      collection(db, 'payments'),
       where('clientEmail', '==', client.email)
     );
     const unsubPayments = onSnapshot(qPayments, (snapshot) => {
-      const docs = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as Payment));
+      const docs = snapshot.docs.map((doc) => ({ ...doc.data(), id: doc.id } as Payment));
       setPayments(docs.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()));
       setLoading(false);
     }, (error) => {
@@ -73,7 +71,6 @@ export default function ClientDashboard({ client }: ClientDashboardProps) {
   const hasRate = client.interestRate !== undefined && client.interestRate !== null;
   const currentRate = hasRate ? Number(client.interestRate) : 0;
 
-  // Chart data: Last 6 months + Next 6 months projection
   const chartData = Array.from({ length: 13 }).map((_, i) => {
     const monthOffset = i - 6;
     const targetDate = addMonths(new Date(), monthOffset);
@@ -95,7 +92,7 @@ export default function ClientDashboard({ client }: ClientDashboardProps) {
     return {
       name: targetDate.toLocaleDateString('pt-BR', { month: 'short' }),
       balance: Math.max(0, Math.round(balanceAtDate)),
-      isProjection: monthOffset > 0
+      isProjection: monthOffset > 0,
     };
   });
 
@@ -128,9 +125,8 @@ export default function ClientDashboard({ client }: ClientDashboardProps) {
         </div>
       </div>
 
-      {/* Stats Grid */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <motion.div 
+        <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100"
@@ -149,11 +145,11 @@ export default function ClientDashboard({ client }: ClientDashboardProps) {
           </h3>
           <div className="mt-4 flex items-center gap-1 text-xs text-gray-400">
             <Info className="w-3 h-3" />
-            <span>Mostra os tokens ativos j&aacute; creditados</span>
+            <span>Mostra os tokens ativos já creditados</span>
           </div>
         </motion.div>
 
-        <motion.div 
+        <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.1 }}
@@ -164,16 +160,16 @@ export default function ClientDashboard({ client }: ClientDashboardProps) {
               <ArrowUpRight className="text-blue-600 w-6 h-6" />
             </div>
           </div>
-          <p className="text-sm text-gray-500 font-medium">Total de Tokens</p>
+          <p className="text-sm text-gray-500 font-medium">Próximo Rendimento</p>
           <h3 className="text-3xl font-bold text-gray-900 mt-1">
-            {stats.totalInvested.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+            {stats.periodProfit.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
           </h3>
           <p className="mt-4 text-xs text-blue-600 font-medium">
-            Soma de todas as suas adições de tokens
+            Estimativa para a próxima competência
           </p>
         </motion.div>
 
-        <motion.div 
+        <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.2 }}
@@ -185,8 +181,8 @@ export default function ClientDashboard({ client }: ClientDashboardProps) {
             </div>
           </div>
           <p className="text-sm text-gray-500 font-medium">
-            {client.paymentFrequency === 'weekly' ? 'Previsão para Próxima Semana' : 
-             client.paymentFrequency === 'biweekly' ? 'Previsão para Próxima Quinzena' : 
+            {client.paymentFrequency === 'weekly' ? 'Previsão para Próxima Semana' :
+             client.paymentFrequency === 'biweekly' ? 'Previsão para Próxima Quinzena' :
              'Previsão para Próximo Mês'}
           </p>
           <h3 className="text-3xl font-bold text-emerald-600 mt-1">
@@ -208,7 +204,6 @@ export default function ClientDashboard({ client }: ClientDashboardProps) {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* Chart */}
         <div className="lg:col-span-2 bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
           <div className="flex items-center justify-between mb-6">
             <h3 className="text-lg font-bold text-gray-900">Projeção de Crescimento</h3>
@@ -222,28 +217,28 @@ export default function ClientDashboard({ client }: ClientDashboardProps) {
               <AreaChart data={chartData}>
                 <defs>
                   <linearGradient id="colorBalance" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#10b981" stopOpacity={0.1}/>
-                    <stop offset="95%" stopColor="#10b981" stopOpacity={0}/>
+                    <stop offset="5%" stopColor="#10b981" stopOpacity={0.1} />
+                    <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
                   </linearGradient>
                 </defs>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f3f4f6" />
                 <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#9ca3af' }} />
                 <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#9ca3af' }} />
-                <Tooltip 
+                <Tooltip
                   contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
-                  formatter={(value: number, name: string, props: any) => [
+                  formatter={(value: number, _name: string, props: any) => [
                     value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }),
-                    props.payload.isProjection ? 'Saldo Previsto' : 'Saldo Real'
+                    props.payload.isProjection ? 'Saldo Previsto' : 'Saldo Real',
                   ]}
                 />
                 <ReferenceLine x={chartData[6].name} stroke="#9ca3af" strokeDasharray="3 3" label={{ value: 'Hoje', position: 'top', fill: '#9ca3af', fontSize: 10 }} />
-                <Area 
-                  type="monotone" 
-                  dataKey="balance" 
-                  stroke="#10b981" 
-                  strokeWidth={3} 
-                  fillOpacity={1} 
-                  fill="url(#colorBalance)" 
+                <Area
+                  type="monotone"
+                  dataKey="balance"
+                  stroke="#10b981"
+                  strokeWidth={3}
+                  fillOpacity={1}
+                  fill="url(#colorBalance)"
                   activeDot={{ r: 6, strokeWidth: 0 }}
                 />
               </AreaChart>
@@ -251,7 +246,6 @@ export default function ClientDashboard({ client }: ClientDashboardProps) {
           </div>
         </div>
 
-        {/* History */}
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden flex flex-col">
           <div className="p-6 border-b border-gray-100">
             <h3 className="text-lg font-bold text-gray-900 flex items-center gap-2">
@@ -261,19 +255,21 @@ export default function ClientDashboard({ client }: ClientDashboardProps) {
           </div>
           <div className="flex-1 overflow-y-auto p-6 space-y-4 max-h-[400px]">
             {[
-              ...deposits.filter(d => d.type !== 'reinvestment').map(d => ({ ...d, activityType: 'deposit' as const })),
-              ...payments.filter(p => p.type !== 'reinvestment').map(p => ({ ...p, activityType: 'payment' as const })),
-              ...payments.filter(p => p.type === 'reinvestment').map(p => ({ ...p, activityType: 'reinvestment' as const }))
+              ...deposits.filter((deposit) => deposit.type !== 'reinvestment').map((deposit) => ({ ...deposit, activityType: 'deposit' as const })),
+              ...payments.filter((payment) => payment.type !== 'reinvestment').map((payment) => ({ ...payment, activityType: 'payment' as const })),
+              ...payments.filter((payment) => payment.type === 'reinvestment').map((payment) => ({ ...payment, activityType: 'reinvestment' as const })),
             ]
               .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
               .map((item, idx) => (
                 <div key={idx} className="flex items-center justify-between p-3 bg-gray-50 rounded-xl">
                   <div className="flex items-center gap-3">
-                    <div className={
-                      item.activityType === 'deposit' ? 'bg-emerald-100 p-2 rounded-lg' : 
-                      item.activityType === 'reinvestment' ? 'bg-purple-100 p-2 rounded-lg' :
-                      'bg-blue-100 p-2 rounded-lg'
-                    }>
+                    <div
+                      className={
+                        item.activityType === 'deposit' ? 'bg-emerald-100 p-2 rounded-lg' :
+                        item.activityType === 'reinvestment' ? 'bg-purple-100 p-2 rounded-lg' :
+                        'bg-blue-100 p-2 rounded-lg'
+                      }
+                    >
                       {item.activityType === 'deposit' ? (
                         <ArrowUpRight className="w-4 h-4 text-emerald-600" />
                       ) : item.activityType === 'reinvestment' ? (
@@ -284,18 +280,20 @@ export default function ClientDashboard({ client }: ClientDashboardProps) {
                     </div>
                     <div>
                       <p className="text-sm font-bold text-gray-900">
-                        {item.activityType === 'deposit' ? 'Tokens Adicionados' : 
-                         item.activityType === 'reinvestment' ? 'Rendimento Reaplicado' : 
+                        {item.activityType === 'deposit' ? 'Tokens Adicionados' :
+                         item.activityType === 'reinvestment' ? 'Rendimento Reaplicado' :
                          'Retirada Realizada'}
                       </p>
                       <p className="text-xs text-gray-500">{new Date(item.date).toLocaleDateString('pt-BR')}</p>
                     </div>
                   </div>
-                  <p className={`text-sm font-bold ${
-                    item.activityType === 'deposit' ? 'text-emerald-600' : 
-                    item.activityType === 'reinvestment' ? 'text-purple-600' : 
-                    'text-blue-600'
-                  }`}>
+                  <p
+                    className={`text-sm font-bold ${
+                      item.activityType === 'deposit' ? 'text-emerald-600' :
+                      item.activityType === 'reinvestment' ? 'text-purple-600' :
+                      'text-blue-600'
+                    }`}
+                  >
                     {item.activityType === 'deposit' || item.activityType === 'reinvestment' ? '+' : '-'} {item.amount.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                   </p>
                 </div>
