@@ -74,16 +74,10 @@ export default function ClientDashboard({ client }: ClientDashboardProps) {
   const chartData = Array.from({ length: 13 }).map((_, i) => {
     const monthOffset = i - 6;
     const targetDate = addMonths(new Date(), monthOffset);
-
-    let balanceAtDate = deposits
-      .filter((deposit) => new Date(deposit.date) <= targetDate)
-      .reduce((sum, deposit) => sum + deposit.amount, 0);
-
-    const paidUntilDate = payments
-      .filter((payment) => payment.type !== 'reinvestment' && new Date(payment.date) <= targetDate)
-      .reduce((sum, payment) => sum + payment.amount, 0);
-
-    balanceAtDate -= paidUntilDate;
+    const depositsUntilDate = deposits.filter((deposit) => new Date(deposit.date) <= targetDate);
+    const paymentsUntilDate = payments.filter((payment) => new Date(payment.date) <= targetDate);
+    const statsAtDate = getClientStats(client, depositsUntilDate, paymentsUntilDate, undefined, undefined, targetDate);
+    let balanceAtDate = statsAtDate.currentBalance;
 
     if (monthOffset > 0) {
       balanceAtDate = stats.currentBalance * Math.pow(1 + currentRate / 100, monthOffset);

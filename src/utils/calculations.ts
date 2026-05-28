@@ -36,9 +36,10 @@ export function getClientStats(
   deposits: Deposit[],
   payments: Payment[],
   overrideRate?: number,
-  overrideFrequency?: PaymentFrequency
+  overrideFrequency?: PaymentFrequency,
+  asOfDate?: Date
 ): ClientStats {
-  const now = new Date();
+  const now = asOfDate ?? new Date();
   const rate = typeof client.interestRate === 'number' ? client.interestRate : parseFloat(client.interestRate as any || '0');
   const profitRate = typeof overrideRate === 'number' ? overrideRate : rate;
   const payDay = client.paymentDay || 1;
