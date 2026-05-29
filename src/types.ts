@@ -1,5 +1,6 @@
 export type UserRole = 'manager' | 'client' | 'payer';
 export type PaymentFrequency = 'weekly' | 'biweekly' | 'monthly';
+export type TransactionType = 'withdrawal' | 'reinvestment' | 'profit_withdrawal';
 
 export interface UserProfile {
   uid: string;
@@ -23,8 +24,12 @@ export interface Deposit {
   date: string;
   managerId: string;
   payerEmail?: string;
-  type?: 'withdrawal' | 'reinvestment';
+  type?: TransactionType;
   reinvestmentPairId?: string;
+  profitDistributionId?: string;
+  grossProfitAmount?: number;
+  withdrawnProfitAmount?: number;
+  reinvestedProfitAmount?: number;
 }
 
 export interface Payment {
@@ -35,8 +40,12 @@ export interface Payment {
   date: string;
   managerId: string;
   payerEmail?: string;
-  type?: 'withdrawal' | 'reinvestment';
+  type?: TransactionType;
   reinvestmentPairId?: string;
+  profitDistributionId?: string;
+  grossProfitAmount?: number;
+  withdrawnProfitAmount?: number;
+  reinvestedProfitAmount?: number;
 }
 
 export interface ClientStats {

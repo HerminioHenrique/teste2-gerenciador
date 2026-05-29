@@ -70,6 +70,8 @@ export default function ClientDashboard({ client }: ClientDashboardProps) {
   const stats = getClientStats(client, deposits, payments);
   const hasRate = client.interestRate !== undefined && client.interestRate !== null;
   const currentRate = hasRate ? Number(client.interestRate) : 0;
+  const formatCurrency = (value: number) =>
+    value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
   const chartData = Array.from({ length: 13 }).map((_, i) => {
     const monthOffset = i - 6;
@@ -250,7 +252,12 @@ export default function ClientDashboard({ client }: ClientDashboardProps) {
           <div className="flex-1 overflow-y-auto p-6 space-y-4 max-h-[400px]">
             {[
               ...deposits.filter((deposit) => deposit.type !== 'reinvestment').map((deposit) => ({ ...deposit, activityType: 'deposit' as const })),
-              ...payments.filter((payment) => payment.type !== 'reinvestment').map((payment) => ({ ...payment, activityType: 'payment' as const })),
+              ...payments
+                .filter((payment) => payment.type !== 'reinvestment')
+                .map((payment) => ({
+                  ...payment,
+                  activityType: payment.type === 'profit_withdrawal' ? ('profit_withdrawal' as const) : ('payment' as const),
+                })),
               ...payments.filter((payment) => payment.type === 'reinvestment').map((payment) => ({ ...payment, activityType: 'reinvestment' as const })),
             ]
               .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
@@ -260,12 +267,15 @@ export default function ClientDashboard({ client }: ClientDashboardProps) {
                     <div
                       className={
                         item.activityType === 'deposit' ? 'bg-emerald-100 p-2 rounded-lg' :
+                        item.activityType === 'profit_withdrawal' ? 'bg-amber-100 p-2 rounded-lg' :
                         item.activityType === 'reinvestment' ? 'bg-purple-100 p-2 rounded-lg' :
                         'bg-blue-100 p-2 rounded-lg'
                       }
                     >
                       {item.activityType === 'deposit' ? (
                         <ArrowUpRight className="w-4 h-4 text-emerald-600" />
+                      ) : item.activityType === 'profit_withdrawal' ? (
+                        <ArrowDownRight className="w-4 h-4 text-amber-600" />
                       ) : item.activityType === 'reinvestment' ? (
                         <TrendingUp className="w-4 h-4 text-purple-600" />
                       ) : (
@@ -275,15 +285,27 @@ export default function ClientDashboard({ client }: ClientDashboardProps) {
                     <div>
                       <p className="text-sm font-bold text-gray-900">
                         {item.activityType === 'deposit' ? 'Tokens Adicionados' :
+                         item.activityType === 'profit_withdrawal' ? 'Resgate Parcial do Rendimento' :
                          item.activityType === 'reinvestment' ? 'Rendimento Reaplicado' :
                          'Retirada Realizada'}
                       </p>
+                      {item.activityType === 'profit_withdrawal' && (
+                        <p className="text-[11px] text-amber-600 font-medium">
+                          CompetÃªncia quitada: {formatCurrency(item.grossProfitAmount || 0)} | Reaplicado: {formatCurrency(item.reinvestedProfitAmount || 0)}
+                        </p>
+                      )}
+                      {item.activityType === 'reinvestment' && item.profitDistributionId && (
+                        <p className="text-[11px] text-purple-600 font-medium">
+                          Reaplicado apÃ³s saque de {formatCurrency(item.withdrawnProfitAmount || 0)}
+                        </p>
+                      )}
                       <p className="text-xs text-gray-500">{new Date(item.date).toLocaleDateString('pt-BR')}</p>
                     </div>
                   </div>
                   <p
                     className={`text-sm font-bold ${
                       item.activityType === 'deposit' ? 'text-emerald-600' :
+                      item.activityType === 'profit_withdrawal' ? 'text-amber-600' :
                       item.activityType === 'reinvestment' ? 'text-purple-600' :
                       'text-blue-600'
                     }`}

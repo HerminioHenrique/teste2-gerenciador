@@ -54,6 +54,8 @@ export default function ClientManagement({ manager, clientId, onBack }: ClientMa
   const [depositDate, setDepositDate] = useState(new Date().toISOString().split('T')[0]);
   const [paymentAmount, setPaymentAmount] = useState('');
   const [paymentDate, setPaymentDate] = useState(new Date().toISOString().split('T')[0]);
+  const [partialProfitAmount, setPartialProfitAmount] = useState('');
+  const [isPartialProfitModalOpen, setIsPartialProfitModalOpen] = useState(false);
   const [editRate, setEditRate] = useState(0);
   const [editPayDay, setEditPayDay] = useState(0);
   const [editFrequency, setEditFrequency] = useState<PaymentFrequency>('monthly');
@@ -136,6 +138,8 @@ export default function ClientManagement({ manager, clientId, onBack }: ClientMa
   if (loading || !client) return <div className="p-8 text-center">Carregando...</div>;
 
   const stats = getClientStats(client, deposits, payments);
+  const formatCurrency = (value: number) =>
+    value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
   const findPairedDepositForReinvestment = (payment: Payment) =>
     deposits.find(
@@ -161,6 +165,11 @@ export default function ClientManagement({ manager, clientId, onBack }: ClientMa
             payment.date === deposit.date))
     );
 
+  const getProfitDistributionRecords = (profitDistributionId: string) => ({
+    relatedDeposits: deposits.filter((deposit) => deposit.profitDistributionId === profitDistributionId),
+    relatedPayments: payments.filter((payment) => payment.profitDistributionId === profitDistributionId),
+  });
+
   const showSuccess = (msg: string) => {
     setSuccessMsg(msg);
     setTimeout(() => setSuccessMsg(null), 3000);
@@ -177,6 +186,41 @@ export default function ClientManagement({ manager, clientId, onBack }: ClientMa
 
   const closeConfirm = () => {
     setConfirmModal((prev) => ({ ...prev, open: false }));
+  };
+
+  const createReinvestmentEntries = (
+    batch: ReturnType<typeof writeBatch>,
+    amount: number,
+    isoDate: string,
+    extraFields: Partial<Deposit & Payment> = {}
+  ) => {
+    const pairId = crypto.randomUUID();
+    const paymentRef = doc(collection(db, 'payments'));
+    const depositRef = doc(collection(db, 'deposits'));
+
+    batch.set(paymentRef, {
+      clientId,
+      clientEmail: client.email,
+      managerId: manager.uid,
+      payerEmail: manager.payerEmail || '',
+      amount,
+      date: isoDate,
+      type: 'reinvestment',
+      reinvestmentPairId: pairId,
+      ...extraFields,
+    });
+
+    batch.set(depositRef, {
+      clientId,
+      clientEmail: client.email,
+      managerId: manager.uid,
+      payerEmail: manager.payerEmail || '',
+      amount,
+      date: isoDate,
+      type: 'reinvestment',
+      reinvestmentPairId: pairId,
+      ...extraFields,
+    });
   };
 
   const handleAddDeposit = async (e: React.FormEvent) => {
@@ -242,6 +286,20 @@ export default function ClientManagement({ manager, clientId, onBack }: ClientMa
     if (!editingTransaction) return;
 
     try {
+      const existingPayment =
+        editingTransaction.type === 'payments'
+          ? payments.find((item) => item.id === editingTransaction.id)
+          : null;
+      const existingDeposit =
+        editingTransaction.type === 'deposits'
+          ? deposits.find((item) => item.id === editingTransaction.id)
+          : null;
+
+      if (existingPayment?.profitDistributionId || existingDeposit?.profitDistributionId) {
+        showError('Para manter o histÃ³rico correto, exclua essa distribuiÃ§Ã£o parcial e cadastre novamente.');
+        return;
+      }
+
       const nextAmount = parseFloat(editingTransaction.amount);
       const nextDate = new Date(`${editingTransaction.date}T12:00:00`).toISOString();
       const batch = writeBatch(db);
@@ -334,6 +392,71 @@ export default function ClientManagement({ manager, clientId, onBack }: ClientMa
     );
   };
 
+  const handleOpenPartialProfitModal = () => {
+    const profit = stats.periodProfit;
+    if (profit <= 0) {
+      showError('NÃ£o hÃ¡ rendimento para distribuir neste perÃ­odo.');
+      return;
+    }
+
+    setPartialProfitAmount(paymentAmount);
+    setIsPartialProfitModalOpen(true);
+  };
+
+  const handleConfirmPartialProfit = async () => {
+    const grossProfit = stats.periodProfit;
+    const withdrawnAmount = parseFloat(partialProfitAmount);
+
+    if (!Number.isFinite(withdrawnAmount) || withdrawnAmount <= 0) {
+      showError('Informe um valor de resgate maior que zero.');
+      return;
+    }
+
+    if (withdrawnAmount >= grossProfit) {
+      showError('O resgate parcial deve ser menor que o prÃ³ximo rendimento. Para sacar tudo, use "Pagar".');
+      return;
+    }
+
+    const reinvestedAmount = grossProfit - withdrawnAmount;
+
+    try {
+      const batch = writeBatch(db);
+      const isoDate = new Date(`${paymentDate}T12:00:00`).toISOString();
+      const profitDistributionId = crypto.randomUUID();
+      const withdrawalRef = doc(collection(db, 'payments'));
+
+      batch.set(withdrawalRef, {
+        clientId,
+        clientEmail: client.email,
+        managerId: manager.uid,
+        payerEmail: manager.payerEmail || '',
+        amount: withdrawnAmount,
+        date: isoDate,
+        type: 'profit_withdrawal',
+        profitDistributionId,
+        grossProfitAmount: grossProfit,
+        withdrawnProfitAmount: withdrawnAmount,
+        reinvestedProfitAmount: reinvestedAmount,
+      });
+
+      createReinvestmentEntries(batch, reinvestedAmount, isoDate, {
+        profitDistributionId,
+        grossProfitAmount: grossProfit,
+        withdrawnProfitAmount: withdrawnAmount,
+        reinvestedProfitAmount: reinvestedAmount,
+      });
+
+      await batch.commit();
+      setIsPartialProfitModalOpen(false);
+      setPartialProfitAmount('');
+      setPaymentAmount('');
+      showSuccess('Rendimento distribuÃ­do com sucesso! Parte sacada e restante reaplicado.');
+    } catch (error) {
+      console.error('Erro ao distribuir rendimento:', error);
+      showError('Erro ao distribuir rendimento.');
+    }
+  };
+
   const handleDeleteTransaction = (type: 'deposits' | 'payments', id: string) => {
     openConfirm(
       'Excluir Transação',
@@ -342,8 +465,24 @@ export default function ClientManagement({ manager, clientId, onBack }: ClientMa
         try {
           const batch = writeBatch(db);
           let removedLinkedReinvestment = false;
+          let removedProfitDistribution = false;
+          const targetPayment = type === 'payments' ? payments.find((item) => item.id === id) : null;
+          const targetDeposit = type === 'deposits' ? deposits.find((item) => item.id === id) : null;
+          const profitDistributionId = targetPayment?.profitDistributionId || targetDeposit?.profitDistributionId;
 
-          if (type === 'payments') {
+          if (profitDistributionId) {
+            const { relatedDeposits, relatedPayments } = getProfitDistributionRecords(profitDistributionId);
+
+            relatedDeposits.forEach((deposit) => {
+              batch.delete(doc(db, 'deposits', deposit.id));
+            });
+
+            relatedPayments.forEach((payment) => {
+              batch.delete(doc(db, 'payments', payment.id));
+            });
+
+            removedProfitDistribution = relatedDeposits.length + relatedPayments.length > 0;
+          } else if (type === 'payments') {
             const payment = payments.find((item) => item.id === id);
             if (payment?.type === 'reinvestment') {
               const pairedDeposit = findPairedDepositForReinvestment(payment);
@@ -363,11 +502,15 @@ export default function ClientManagement({ manager, clientId, onBack }: ClientMa
             }
           }
 
-          batch.delete(doc(db, type, id));
+          if (!removedProfitDistribution) {
+            batch.delete(doc(db, type, id));
+          }
           await batch.commit();
 
           showSuccess(
-            removedLinkedReinvestment
+            removedProfitDistribution
+              ? 'DistribuiÃ§Ã£o parcial excluÃ­da por completo!'
+              : removedLinkedReinvestment
               ? 'Reaplicação excluída por completo!'
               : 'Transação excluída com sucesso!'
           );
@@ -547,7 +690,7 @@ export default function ClientManagement({ manager, clientId, onBack }: ClientMa
                   className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm"
                 />
               </div>
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                 <button
                   type="submit"
                   className="bg-blue-600 text-white py-2 rounded-lg font-semibold hover:bg-blue-700 transition-colors"
@@ -561,6 +704,13 @@ export default function ClientManagement({ manager, clientId, onBack }: ClientMa
                 >
                   <RefreshCw className="w-4 h-4" />
                   Reaplicar
+                </button>
+                <button
+                  type="button"
+                  onClick={handleOpenPartialProfitModal}
+                  className="bg-amber-500 text-white py-2 rounded-lg font-semibold hover:bg-amber-600 transition-colors"
+                >
+                  Sacar + Reaplicar
                 </button>
               </div>
             </form>
@@ -717,22 +867,32 @@ export default function ClientManagement({ manager, clientId, onBack }: ClientMa
                           <p className="text-sm font-bold text-gray-900">
                             {payment.amount.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                           </p>
+                          <p className="text-[11px] font-medium text-blue-600">
+                            {payment.type === 'profit_withdrawal' ? 'Resgate parcial do rendimento' : 'Pagamento / retirada'}
+                          </p>
+                          {payment.type === 'profit_withdrawal' && (
+                            <p className="text-[11px] text-gray-500">
+                              CompetÃªncia quitada: {formatCurrency(payment.grossProfitAmount || 0)} | Reaplicado: {formatCurrency(payment.reinvestedProfitAmount || 0)}
+                            </p>
+                          )}
                           <p className="text-xs text-gray-500">{new Date(payment.date).toLocaleDateString('pt-BR')}</p>
                         </div>
                         <div className="flex items-center gap-1 shrink-0 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
-                          <button
-                            onClick={() =>
-                              setEditingTransaction({
-                                type: 'payments',
-                                id: payment.id,
-                                amount: payment.amount.toString(),
-                                date: new Date(payment.date).toISOString().split('T')[0],
-                              })
-                            }
-                            className="p-1.5 text-gray-400 hover:text-blue-600 transition-colors"
-                          >
-                            <Edit2 className="w-4 h-4" />
-                          </button>
+                          {!payment.profitDistributionId && (
+                            <button
+                              onClick={() =>
+                                setEditingTransaction({
+                                  type: 'payments',
+                                  id: payment.id,
+                                  amount: payment.amount.toString(),
+                                  date: new Date(payment.date).toISOString().split('T')[0],
+                                })
+                              }
+                              className="p-1.5 text-gray-400 hover:text-blue-600 transition-colors"
+                            >
+                              <Edit2 className="w-4 h-4" />
+                            </button>
+                          )}
                           <button
                             onClick={() => handleDeleteTransaction('payments', payment.id)}
                             className="p-1.5 text-gray-400 hover:text-red-600 transition-colors"
@@ -762,22 +922,32 @@ export default function ClientManagement({ manager, clientId, onBack }: ClientMa
                           <p className="text-sm font-bold text-purple-700">
                             {payment.amount.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                           </p>
+                          <p className="text-[11px] font-medium text-purple-600">
+                            {payment.profitDistributionId ? 'ReaplicaÃ§Ã£o do saldo restante' : 'ReaplicaÃ§Ã£o integral'}
+                          </p>
+                          {payment.profitDistributionId && (
+                            <p className="text-[11px] text-purple-500">
+                              Sacado: {formatCurrency(payment.withdrawnProfitAmount || 0)} de {formatCurrency(payment.grossProfitAmount || 0)}
+                            </p>
+                          )}
                           <p className="text-xs text-purple-500">{new Date(payment.date).toLocaleDateString('pt-BR')}</p>
                         </div>
                         <div className="flex items-center gap-1 shrink-0 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
-                          <button
-                            onClick={() =>
-                              setEditingTransaction({
-                                type: 'payments',
-                                id: payment.id,
-                                amount: payment.amount.toString(),
-                                date: new Date(payment.date).toISOString().split('T')[0],
-                              })
-                            }
-                            className="p-1.5 text-purple-400 hover:text-purple-600 transition-colors"
-                          >
-                            <Edit2 className="w-4 h-4" />
-                          </button>
+                          {!payment.profitDistributionId && (
+                            <button
+                              onClick={() =>
+                                setEditingTransaction({
+                                  type: 'payments',
+                                  id: payment.id,
+                                  amount: payment.amount.toString(),
+                                  date: new Date(payment.date).toISOString().split('T')[0],
+                                })
+                              }
+                              className="p-1.5 text-purple-400 hover:text-purple-600 transition-colors"
+                            >
+                              <Edit2 className="w-4 h-4" />
+                            </button>
+                          )}
                           <button
                             onClick={() => handleDeleteTransaction('payments', payment.id)}
                             className="p-1.5 text-purple-400 hover:text-red-600 transition-colors"
@@ -796,6 +966,86 @@ export default function ClientManagement({ manager, clientId, onBack }: ClientMa
           </div>
         </div>
       </div>
+
+      <AnimatePresence>
+        {isPartialProfitModalOpen && (
+          <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[180] flex items-center justify-center p-4">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden"
+            >
+              <div className="p-6 border-b border-gray-100">
+                <h3 className="text-lg font-bold text-gray-900">Saque Parcial do Rendimento</h3>
+                <p className="text-sm text-gray-500 mt-1">
+                  Escolha quanto do rendimento atual o cliente quer sacar. O restante serÃ¡ reaplicado e o mÃªs ficarÃ¡ marcado como pago.
+                </p>
+              </div>
+              <div className="p-6 space-y-4">
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="rounded-xl bg-gray-50 p-4">
+                    <p className="text-xs font-bold uppercase text-gray-400">Rendimento do MÃªs</p>
+                    <p className="text-lg font-bold text-gray-900 mt-1">{formatCurrency(stats.periodProfit)}</p>
+                  </div>
+                  <div className="rounded-xl bg-purple-50 p-4">
+                    <p className="text-xs font-bold uppercase text-purple-500">Vai Reaplicar</p>
+                    <p className="text-lg font-bold text-purple-700 mt-1">
+                      {formatCurrency(Math.max(0, stats.periodProfit - (parseFloat(partialProfitAmount) || 0)))}
+                    </p>
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-gray-400 uppercase mb-1">Valor para sacar (R$)</label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    max={stats.periodProfit}
+                    value={partialProfitAmount}
+                    onChange={(e) => setPartialProfitAmount(e.target.value)}
+                    className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-amber-500 outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-gray-400 uppercase mb-1">Data da competÃªncia</label>
+                  <input
+                    type="date"
+                    value={paymentDate}
+                    onChange={(e) => setPaymentDate(e.target.value)}
+                    className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-amber-500 outline-none"
+                  />
+                </div>
+                <div className="rounded-xl border border-amber-100 bg-amber-50 px-4 py-3">
+                  <p className="text-sm text-amber-800">HistÃ³rico gerado:</p>
+                  <p className="text-xs text-amber-700 mt-1">
+                    1 registro de saque do rendimento + 1 reaplicaÃ§Ã£o do valor restante, ambos vinculados na mesma competÃªncia.
+                  </p>
+                </div>
+              </div>
+              <div className="px-6 pb-6 flex gap-3">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsPartialProfitModalOpen(false);
+                    setPartialProfitAmount('');
+                  }}
+                  className="flex-1 px-4 py-2 border border-gray-200 text-gray-600 rounded-lg font-semibold hover:bg-gray-50 transition-colors"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="button"
+                  onClick={handleConfirmPartialProfit}
+                  className="flex-1 px-4 py-2 bg-amber-500 text-white rounded-lg font-semibold hover:bg-amber-600 transition-colors"
+                >
+                  Confirmar DistribuiÃ§Ã£o
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
 
       <AnimatePresence>
         {editingTransaction && (
