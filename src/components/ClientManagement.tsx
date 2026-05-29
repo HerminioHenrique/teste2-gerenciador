@@ -296,7 +296,7 @@ export default function ClientManagement({ manager, clientId, onBack }: ClientMa
           : null;
 
       if (existingPayment?.profitDistributionId || existingDeposit?.profitDistributionId) {
-        showError('Para manter o historico correto, exclua essa distribuicao parcial e cadastre novamente.');
+        showError('Para manter o histórico correto, exclua essa distribuição parcial e cadastre novamente.');
         return;
       }
 
@@ -395,7 +395,7 @@ export default function ClientManagement({ manager, clientId, onBack }: ClientMa
   const handleOpenPartialProfitModal = () => {
     const profit = stats.periodProfit;
     if (profit <= 0) {
-      showError('Nao ha rendimento para distribuir neste periodo.');
+      showError('Não há rendimento para distribuir neste período.');
       return;
     }
 
@@ -413,7 +413,7 @@ export default function ClientManagement({ manager, clientId, onBack }: ClientMa
     }
 
     if (withdrawnAmount >= grossProfit) {
-      showError('O resgate parcial deve ser menor que o proximo rendimento. Para sacar tudo, use "Pagar".');
+      showError('O resgate parcial deve ser menor que o próximo rendimento. Para sacar tudo, use "Pagar".');
       return;
     }
 
@@ -450,7 +450,7 @@ export default function ClientManagement({ manager, clientId, onBack }: ClientMa
       setIsPartialProfitModalOpen(false);
       setPartialProfitAmount('');
       setPaymentAmount('');
-      showSuccess('Rendimento distribuido com sucesso! Parte sacada e restante reaplicado.');
+      showSuccess('Rendimento distribuído com sucesso! Parte sacada e restante reaplicado.');
     } catch (error) {
       console.error('Erro ao distribuir rendimento:', error);
       showError('Erro ao distribuir rendimento.');
@@ -509,7 +509,7 @@ export default function ClientManagement({ manager, clientId, onBack }: ClientMa
 
           showSuccess(
             removedProfitDistribution
-              ? 'Distribuicao parcial excluida por completo!'
+              ? 'Distribuição parcial excluída por completo!'
               : removedLinkedReinvestment
               ? 'Reaplicação excluída por completo!'
               : 'Transação excluída com sucesso!'
@@ -872,7 +872,7 @@ export default function ClientManagement({ manager, clientId, onBack }: ClientMa
                           </p>
                           {payment.type === 'profit_withdrawal' && (
                             <p className="text-[11px] text-gray-500">
-                              Competencia quitada: {formatCurrency(payment.grossProfitAmount || 0)} | Reaplicado: {formatCurrency(payment.reinvestedProfitAmount || 0)}
+                              Competência quitada: {formatCurrency(payment.grossProfitAmount || 0)} | Reaplicado: {formatCurrency(payment.reinvestedProfitAmount || 0)}
                             </p>
                           )}
                           <p className="text-xs text-gray-500">{new Date(payment.date).toLocaleDateString('pt-BR')}</p>
@@ -923,7 +923,7 @@ export default function ClientManagement({ manager, clientId, onBack }: ClientMa
                             {payment.amount.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                           </p>
                           <p className="text-[11px] font-medium text-purple-600">
-                            {payment.profitDistributionId ? 'Reaplicacao do saldo restante' : 'Reaplicacao integral'}
+                            {payment.profitDistributionId ? 'Reaplicação do saldo restante' : 'Reaplicação integral'}
                           </p>
                           {payment.profitDistributionId && (
                             <p className="text-[11px] text-purple-500">
@@ -979,13 +979,13 @@ export default function ClientManagement({ manager, clientId, onBack }: ClientMa
               <div className="p-6 border-b border-gray-100">
                 <h3 className="text-lg font-bold text-gray-900">Saque Parcial do Rendimento</h3>
                 <p className="text-sm text-gray-500 mt-1">
-                  Escolha quanto do rendimento atual o cliente quer sacar. O restante sera reaplicado e o mes ficara marcado como pago.
+                  Escolha quanto do rendimento atual o cliente quer sacar. O restante será reaplicado e o mês ficará marcado como pago.
                 </p>
               </div>
               <div className="p-6 space-y-4">
                 <div className="grid grid-cols-2 gap-3">
                   <div className="rounded-xl bg-gray-50 p-4">
-                    <p className="text-xs font-bold uppercase text-gray-400">Rendimento do Mes</p>
+                    <p className="text-xs font-bold uppercase text-gray-400">Rendimento do Mês</p>
                     <p className="text-lg font-bold text-gray-900 mt-1">{formatCurrency(stats.periodProfit)}</p>
                   </div>
                   <div className="rounded-xl bg-purple-50 p-4">
@@ -1008,7 +1008,7 @@ export default function ClientManagement({ manager, clientId, onBack }: ClientMa
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-bold text-gray-400 uppercase mb-1">Data da competencia</label>
+                  <label className="block text-xs font-bold text-gray-400 uppercase mb-1">Data da competência</label>
                   <input
                     type="date"
                     value={paymentDate}
@@ -1017,9 +1017,9 @@ export default function ClientManagement({ manager, clientId, onBack }: ClientMa
                   />
                 </div>
                 <div className="rounded-xl border border-amber-100 bg-amber-50 px-4 py-3">
-                  <p className="text-sm text-amber-800">Historico gerado:</p>
+                  <p className="text-sm text-amber-800">Histórico gerado:</p>
                   <p className="text-xs text-amber-700 mt-1">
-                    1 registro de saque do rendimento + 1 reaplicacao do valor restante, ambos vinculados na mesma competencia.
+                    1 registro de saque do rendimento + 1 reaplicação do valor restante, ambos vinculados na mesma competência.
                   </p>
                 </div>
               </div>
@@ -1039,7 +1039,7 @@ export default function ClientManagement({ manager, clientId, onBack }: ClientMa
                   onClick={handleConfirmPartialProfit}
                   className="flex-1 px-4 py-2 bg-amber-500 text-white rounded-lg font-semibold hover:bg-amber-600 transition-colors"
                 >
-                  Confirmar Distribuicao
+                  Confirmar Distribuição
                 </button>
               </div>
             </motion.div>

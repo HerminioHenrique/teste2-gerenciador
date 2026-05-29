@@ -291,12 +291,12 @@ export default function ClientDashboard({ client }: ClientDashboardProps) {
                       </p>
                       {item.activityType === 'profit_withdrawal' && (
                         <p className="text-[11px] text-amber-600 font-medium">
-                          Competencia quitada: {formatCurrency(item.grossProfitAmount || 0)} | Reaplicado: {formatCurrency(item.reinvestedProfitAmount || 0)}
+                          Competência quitada: {formatCurrency(item.grossProfitAmount || 0)} | Reaplicado: {formatCurrency(item.reinvestedProfitAmount || 0)}
                         </p>
                       )}
                       {item.activityType === 'reinvestment' && item.profitDistributionId && (
                         <p className="text-[11px] text-purple-600 font-medium">
-                          Reaplicado apos saque de {formatCurrency(item.withdrawnProfitAmount || 0)}
+                          Reaplicado após saque de {formatCurrency(item.withdrawnProfitAmount || 0)}
                         </p>
                       )}
                       <p className="text-xs text-gray-500">{new Date(item.date).toLocaleDateString('pt-BR')}</p>
